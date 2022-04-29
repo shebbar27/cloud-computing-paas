@@ -1,0 +1,4 @@
+matplotlib
+boto3
+opencv-python
+numpy
