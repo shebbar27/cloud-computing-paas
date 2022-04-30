@@ -1,8 +1,10 @@
 import base64
-import os
 import boto3
+import datetime
 import json
+import os
 import pi_camera_wrapper
+import time
 
 RECORDINGS_FOLDER = "recordings/"
 RESOLUTION = (640, 480)
@@ -24,7 +26,7 @@ def main():
 def capture_video(pi_camera, capture_duration, recordings_folder):
     return pi_camera.capture_video(capture_duration, recordings_folder)
 
-def call_facere_cognition_lambda_service(video_file_path):
+def call_face_recognition_lambda_service(video_file_path):
     with open(video_file_path, 'rb') as video_file:
         video_data_as_bytes = base64.b64encode(video_file.read())
         payload_dict = {
@@ -32,7 +34,7 @@ def call_facere_cognition_lambda_service(video_file_path):
         }
                 
     response = client.invoke(
-            FunctionName='face-recognition',
+            FunctionName='face_recognition',
             InvocationType='RequestResponse',
             Payload=json.dumps(payload_dict),
         )
@@ -42,11 +44,14 @@ def call_facere_cognition_lambda_service(video_file_path):
 
 def execute(pi_camera):
     video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
-    face_recognition_result = call_facere_cognition_lambda_service(RECORDINGS_FOLDER + video_file_name)
-    
-    print(face_recognition_result)
+    start_time = time.time()
+    face_recognition_result = call_face_recognition_lambda_service(RECORDINGS_FOLDER + video_file_name)
+    face_recognition_result = face_recognition_result.decode('UTF-8')
+    latency = time.time() - start_time
+    formatted_result = f"{datetime.datetime.now().isoformat()} - {video_file_name}: {face_recognition_result} \t Latency: {latency: .3f} seconds\n"
+    print(formatted_result)
     with open('results.txt', 'a') as results_file:
-        results_file.write(f"{video_file_name}: {face_recognition_result}\n")
+        results_file.write(f"{formatted_result}")
 
     files_to_delete.append(video_file_name)
     if len(files_to_delete) >= MAX_VIDEO_FILES_RETAINED:
