@@ -25,12 +25,18 @@ def face_recognition_handler(event, context):
 		temp_file.write(base64.b64decode(video_bytes))
 
 	response = s3.upload_file(tempVideoPath, bucket_name, "faceRecog"+str(datetime.datetime.now())+".h264")
-	os.system("rm -f "+ frames_path)
-	os.system("rm -f "+ crop_path)
+
+	if os.path.exists(frames_path):
+		os.system("rm "+ frames_path + "*")
+	else:
+		os.mkdir(frames_path)
+	if os.path.exists(crop_path):
+		os.system("rm "+ crop_path + "*")
+	else:
+		os.mkdir(crop_path)
+
 	os.system("ffmpeg -i " + tempVideoPath + " -r 1 " + frames_path + "image-%3d.jpeg")
 	frame_filenames = next(os.walk(frames_path), (None, None, []))[2]
-	# print('\n\n\n\n\n\n\n\n\n\n\n\n\n')
-	# print("******************")
 	for frame in frame_filenames:
 		full_frame_path=frames_path+frame
 		img = cv2.imread(full_frame_path)
