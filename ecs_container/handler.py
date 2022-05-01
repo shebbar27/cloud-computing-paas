@@ -5,6 +5,7 @@ import datetime
 import os
 import cv2
 import numpy as np
+import json
 
 
 session = boto3.Session(
@@ -12,11 +13,27 @@ session = boto3.Session(
         aws_secret_access_key='TuPRp66AgrlQHpYBLJq/rUwRLFSOHLZbx3nkpfNf'
     )
 s3 = session.client('s3')
+dynamo_db=session.client('dynamodb')
+name_id_map={'Sunaada':'1219580453','Krutarth':'1222317733','Anup':'1222119431'}
 bucket_name="face-recog-videos"
 tempVideoPath="/tmp/tempFile.h264"
 frames_path="/tmp/frames/"
 crop_path="/tmp/cropped_images/"
 face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+dynamo_db_table_name="studentInfo"
+
+def get_student_id(name):
+    response = dynamo_db.get_item(
+    Key={
+        'id': {
+            'S': name_id_map[name],
+        }
+    },
+    TableName=dynamo_db_table_name,
+    )
+    student_info={'Name':response['Item']['name']['S'],'Major':response['Item']['major']['S'],'Year':response['Item']['year']['S'],'Id':response['Item']['id']['S']}
+    return json.dumps(student_info,indent=4)
+
 
 def face_recognition_handler(event, context):	
 	video_data=event["video_data"]
@@ -53,7 +70,7 @@ def face_recognition_handler(event, context):
 			cv2.imwrite(crop_path + frame, norm_img)
 
 			res=eval_face_recognition.face_recognition(crop_path + frame)
-			return res
+			return get_student_id(res)
 		else:
 			continue
 	
