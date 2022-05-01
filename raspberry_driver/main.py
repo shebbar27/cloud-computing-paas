@@ -11,6 +11,7 @@ RESOLUTION = (640, 480)
 CONTRAST = 10
 CAPTURE_DURATION = 0.5
 MAX_VIDEO_FILES_RETAINED = 10
+PREVIEW_POSITION = (890, 20)
 
 files_to_delete = []
 session = boto3.Session(
@@ -20,8 +21,15 @@ client = session.client('lambda',region_name='us-east-1')
 
 def main():
     pi_camera = pi_camera_wrapper.Camera(RESOLUTION, CONTRAST)
+    launch_camera_preview(pi_camera)
+   
     while True:
         execute(pi_camera)
+
+def launch_camera_preview(pi_camera):
+    pi_camera.camera.preview_fullscreen=False
+    pi_camera.camera.preview_window=(PREVIEW_POSITION[0], PREVIEW_POSITION[1], RESOLUTION[0], RESOLUTION[1])
+    pi_camera.camera.start_preview()
 
 def capture_video(pi_camera, capture_duration, recordings_folder):
     return pi_camera.capture_video(capture_duration, recordings_folder)
