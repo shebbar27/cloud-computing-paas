@@ -36,8 +36,8 @@ def launch_camera_preview(pi_camera):
 def capture_video(pi_camera, capture_duration, recordings_folder):
     return pi_camera.capture_video(capture_duration, recordings_folder)
 
-def call_face_recognition_lambda_service(video_file_path):
-    with open(video_file_path, 'rb') as video_file:
+def call_face_recognition_lambda_service(RECORDINGS_FOLDER + video_file_name):
+    with open(RECORDINGS_FOLDER + video_file_name, 'rb') as video_file:
         video_data_as_bytes = base64.b64encode(video_file.read())
         payload_dict = {
             'video_data': str(video_data_as_bytes, encoding='utf-8') 
@@ -52,12 +52,12 @@ def call_face_recognition_lambda_service(video_file_path):
     face_recognition_result = response['Payload'].read()
 
     start_time = time.time()
-    face_recognition_result = call_face_recognition_lambda_service(RECORDINGS_FOLDER + video_file_name)
+    face_recognition_result = call_face_recognition_lambda_service( RECORDINGS_FOLDER + video_file_name)
     face_recognition_result = face_recognition_result.decode('UTF-8')
     latency = time.time() - start_time
-    formatted_result = f"{datetime.datetime.now().isoformat()} - {video_file_name}: {face_recognition_result} \t Latency: {latency: .3f} seconds\n"
+    formatted_result = f"{datetime.datetime.now().isoformat()} - { video_file_name}: {face_recognition_result} \t Latency: {latency: .3f} seconds\n"
     print(formatted_result)
-    os.remove(video_file_path)
+    os.remove(RECORDINGS_FOLDER + video_file_name)
 
 exe = ThreadPoolExecutor(max_workers = 3)    
 
@@ -65,7 +65,7 @@ def execute(pi_camera):
     global exe
     video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
     exe.submit(call_face_recognition_lambda_service, video_file_name)
-    # t1 = threading.Thread(target=call_face_recognition_lambda_service, args=[video_file_name])
+    # t1 = threading.Thread(target=call_face_recognition_lambda_service, args=[RECORDINGS_FOLDER + video_file_name])
     # t1.start()
 
 
