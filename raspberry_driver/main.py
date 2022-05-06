@@ -24,9 +24,11 @@ client = session.client('lambda',region_name='us-east-1')
 def main():
     pi_camera = pi_camera_wrapper.Camera(RESOLUTION, CONTRAST)
     launch_camera_preview(pi_camera)
-   
+    exe = ThreadPoolExecutor(max_workers = 5)   
     while True:
-        execute(pi_camera)
+        #execute(pi_camera)
+        video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
+        exe.submit(call_face_recognition_lambda_service, video_file_name)
 
 def launch_camera_preview(pi_camera):
     pi_camera.camera.preview_fullscreen=False
@@ -37,6 +39,7 @@ def capture_video(pi_camera, capture_duration, recordings_folder):
     return pi_camera.capture_video(capture_duration, recordings_folder)
 
 def call_face_recognition_lambda_service(video_file_name):
+    start_time = time.time()
     with open(RECORDINGS_FOLDER + video_file_name, 'rb') as video_file:
         video_data_as_bytes = base64.b64encode(video_file.read())
         payload_dict = {
@@ -48,26 +51,30 @@ def call_face_recognition_lambda_service(video_file_name):
             InvocationType='RequestResponse',
             Payload=json.dumps(payload_dict),
         )
-
     face_recognition_result = response['Payload'].read()
-
-    start_time = time.time()
-    face_recognition_result = call_face_recognition_lambda_service( RECORDINGS_FOLDER + video_file_name)
+   
     face_recognition_result = face_recognition_result.decode('UTF-8')
+
     latency = time.time() - start_time
-    formatted_result = f"{datetime.datetime.now().isoformat()} - { video_file_name}: {face_recognition_result} \t Latency: {latency: .3f} seconds\n"
-    print(formatted_result)
+    #print(face_recognition_result)
+    if 'error' in face_recognition_result:
+        pass
+    elif 'No Face Detected' in face_recognition_result:
+        print(f"{datetime.datetime.now().isoformat()} - {video_file_name} \t Latency: {latency: .3f} seconds\n{face_recognition_result}")
+    elif 'Name' in face_recognition_result:
+        face_recognition_result=face_recognition_result[1:-1]
+        try:
+            result_dict= json.loads(face_recognition_result.replace('\\\"','"').replace(" ","").replace("\\n",""))
+        except Exception as e:
+            print(e)
+        formatted_result = f"{datetime.datetime.now().isoformat()} - {video_file_name} \t Latency: {latency: .3f} seconds\nName: {result_dict['Name']}\nID: {result_dict['Id']}\nMajor: {result_dict['Major']}\nYear: {result_dict['Year']}\n========================\n\n"
+        print(formatted_result)
     os.remove(RECORDINGS_FOLDER + video_file_name)
-
-exe = ThreadPoolExecutor(max_workers = 3)    
-
+ 
 def execute(pi_camera):
     global exe
     video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
     exe.submit(call_face_recognition_lambda_service, video_file_name)
-    # t1 = threading.Thread(target=call_face_recognition_lambda_service, args=[RECORDINGS_FOLDER + video_file_name])
-    # t1.start()
-
 
 if __name__ == '__main__':
     main()
