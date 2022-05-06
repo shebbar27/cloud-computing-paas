@@ -5,6 +5,7 @@ import json
 import os
 import pi_camera_wrapper
 import time
+import threading
 
 RECORDINGS_FOLDER = "recordings/"
 RESOLUTION = (640, 480)
@@ -48,24 +49,22 @@ def call_face_recognition_lambda_service(video_file_path):
         )
 
     face_recognition_result = response['Payload'].read()
-    return face_recognition_result
 
-def execute(pi_camera):
-    video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
     start_time = time.time()
     face_recognition_result = call_face_recognition_lambda_service(RECORDINGS_FOLDER + video_file_name)
     face_recognition_result = face_recognition_result.decode('UTF-8')
     latency = time.time() - start_time
     formatted_result = f"{datetime.datetime.now().isoformat()} - {video_file_name}: {face_recognition_result} \t Latency: {latency: .3f} seconds\n"
     print(formatted_result)
-    with open('results.txt', 'a') as results_file:
-        results_file.write(f"{formatted_result}")
+    os.remove(video_file_path)
 
-    files_to_delete.append(video_file_name)
-    if len(files_to_delete) >= MAX_VIDEO_FILES_RETAINED:
-        for file in files_to_delete:
-            os.remove(RECORDINGS_FOLDER + file)
-        files_to_delete.clear()
+
+    
+
+def execute(pi_camera):
+    video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
+    t1 = threading.Thread(target=call_face_recognition_lambda_service, args=[video_file_name])
+    t1.start()
 
 if __name__ == '__main__':
     main()
