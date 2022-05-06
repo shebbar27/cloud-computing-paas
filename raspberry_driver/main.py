@@ -36,7 +36,7 @@ def launch_camera_preview(pi_camera):
 def capture_video(pi_camera, capture_duration, recordings_folder):
     return pi_camera.capture_video(capture_duration, recordings_folder)
 
-def call_face_recognition_lambda_service(RECORDINGS_FOLDER + video_file_name):
+def call_face_recognition_lambda_service(video_file_name):
     with open(RECORDINGS_FOLDER + video_file_name, 'rb') as video_file:
         video_data_as_bytes = base64.b64encode(video_file.read())
         payload_dict = {
