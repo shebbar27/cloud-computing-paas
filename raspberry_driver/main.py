@@ -22,13 +22,13 @@ session = boto3.Session(
 client = session.client('lambda',region_name='us-east-1')
 
 def main():
+    start_time=time.time()
     pi_camera = pi_camera_wrapper.Camera(RESOLUTION, CONTRAST)
-    launch_camera_preview(pi_camera)
     exe = ThreadPoolExecutor(max_workers = 5)   
-    while True:
-        #execute(pi_camera)
+    for i in range(600):
         video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
         exe.submit(call_face_recognition_lambda_service, video_file_name)
+    print(str(time.time()-start_time)+" seconds taken.")
 
 def launch_camera_preview(pi_camera):
     pi_camera.camera.preview_fullscreen=False
@@ -56,7 +56,6 @@ def call_face_recognition_lambda_service(video_file_name):
     face_recognition_result = face_recognition_result.decode('UTF-8')
 
     latency = time.time() - start_time
-    #print(face_recognition_result)
     if 'error' in face_recognition_result:
         pass
     elif 'No Face Detected' in face_recognition_result:
@@ -67,14 +66,9 @@ def call_face_recognition_lambda_service(video_file_name):
             result_dict= json.loads(face_recognition_result.replace('\\\"','"').replace(" ","").replace("\\n",""))
         except Exception as e:
             print(e)
-        formatted_result = f"{datetime.datetime.now().isoformat()} - {video_file_name} \t Latency: {latency: .3f} seconds\nName: {result_dict['Name']}\nID: {result_dict['Id']}\nMajor: {result_dict['Major']}\nYear: {result_dict['Year']}\n========================\n\n"
+        formatted_result = f"{datetime.datetime.now().isoformat()} - {video_file_name} \t Latency: {latency: .3f} seconds\nName: {result_dict['Name']}\nID: {result_dict['Id']}\nMajor: {result_dict['Major']}\nYear: {result_dict['Year']}\n================================================\n\n"
         print(formatted_result)
     os.remove(RECORDINGS_FOLDER + video_file_name)
- 
-def execute(pi_camera):
-    global exe
-    video_file_name = capture_video(pi_camera, CAPTURE_DURATION, RECORDINGS_FOLDER)
-    exe.submit(call_face_recognition_lambda_service, video_file_name)
 
 if __name__ == '__main__':
     main()
